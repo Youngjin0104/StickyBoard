@@ -2,12 +2,76 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light');</script>
 <title>StickyBoard</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── 테마 변수 ── */
+:root{
+  --bg:    #1e293b;
+  --bg2:   #0f172a;
+  --text:  #f8fafc;
+  --text2: #f1f5f9;
+  --dim:   rgba(255,255,255,.3);
+  --sub:   rgba(255,255,255,.45);
+  --bdr:   rgba(255,255,255,.07);
+  --hov:   rgba(255,255,255,.07);
+  --ibg:   rgba(255,255,255,.1);
+  --ibg2:  rgba(255,255,255,.15);
+  --iph:   rgba(255,255,255,.3);
+  --bbg:   rgba(255,255,255,.1);
+  --bhov:  rgba(255,255,255,.18);
+  --bcol:  rgba(255,255,255,.75);
+  --bcolh: #fff;
+  --wbc:   rgba(255,255,255,.5);
+  --wbh:   rgba(255,255,255,.1);
+  --scrl:  rgba(255,255,255,.12);
+  --bdg:   rgba(255,255,255,.1);
+  --bdgc:  rgba(255,255,255,.4);
+  --delbg: rgba(239,68,68,.25);
+  --delc:  rgba(255,255,255,.4);
+  --delch: #fca5a5;
+  --mkbg:  rgba(253,211,77,.3);
+  --mkc:   #f8fafc;
+  --ovl:   rgba(0,0,0,.55);
+  --mbg:   #1e293b;
+  --mbd:   rgba(255,255,255,.12);
+}
+html.light{
+  --bg:    #f8fafc;
+  --bg2:   #e2e8f0;
+  --text:  #1e293b;
+  --text2: #334155;
+  --dim:   rgba(0,0,0,.38);
+  --sub:   rgba(0,0,0,.5);
+  --bdr:   rgba(0,0,0,.08);
+  --hov:   rgba(0,0,0,.05);
+  --ibg:   rgba(0,0,0,.07);
+  --ibg2:  rgba(0,0,0,.11);
+  --iph:   rgba(0,0,0,.3);
+  --bbg:   rgba(0,0,0,.08);
+  --bhov:  rgba(0,0,0,.14);
+  --bcol:  rgba(0,0,0,.6);
+  --bcolh: #1e293b;
+  --wbc:   rgba(0,0,0,.4);
+  --wbh:   rgba(0,0,0,.08);
+  --scrl:  rgba(0,0,0,.15);
+  --bdg:   rgba(0,0,0,.08);
+  --bdgc:  rgba(0,0,0,.45);
+  --delbg: rgba(239,68,68,.12);
+  --delc:  rgba(0,0,0,.35);
+  --delch: #dc2626;
+  --mkbg:  rgba(245,158,11,.3);
+  --mkc:   #1e293b;
+  --ovl:   rgba(0,0,0,.4);
+  --mbg:   #f8fafc;
+  --mbd:   rgba(0,0,0,.12);
+}
+
 body{
   font-family:'Segoe UI',Tahoma,sans-serif;
-  background:#1e293b;color:#f8fafc;
+  background:var(--bg);color:var(--text);
   height:100vh;display:flex;flex-direction:column;overflow:hidden;
 }
 
@@ -15,18 +79,18 @@ body{
 #titlebar{
   height:46px;flex-shrink:0;
   display:flex;align-items:center;padding:0 12px;gap:8px;
-  background:#0f172a;-webkit-app-region:drag;
-  box-shadow:0 1px 0 rgba(255,255,255,.06);
+  background:var(--bg2);-webkit-app-region:drag;
+  box-shadow:0 1px 0 var(--bdr);
 }
 #titlebar .t-title{font-size:14px;font-weight:700;flex:1;pointer-events:none}
 #titlebar button{-webkit-app-region:no-drag}
 .wbtn{
   width:26px;height:26px;border:none;background:transparent;
-  color:rgba(255,255,255,.5);border-radius:5px;cursor:pointer;
+  color:var(--wbc);border-radius:5px;cursor:pointer;
   font-size:12px;display:flex;align-items:center;justify-content:center;
   transition:all .15s;
 }
-.wbtn:hover{background:rgba(255,255,255,.1);color:#fff}
+.wbtn:hover{background:var(--wbh);color:var(--text)}
 #btn-wclose:hover{background:#ef4444;color:#fff}
 
 /* Actions */
@@ -39,13 +103,13 @@ body{
 #btn-new:hover{background:#d97706}
 #btn-import{
   height:36px;padding:0 12px;border:none;border-radius:8px;
-  background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);
+  background:var(--bbg);color:var(--bcol);
   font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
 }
-#btn-import:hover{background:rgba(255,255,255,.18);color:#fff}
+#btn-import:hover{background:var(--bhov);color:var(--bcolh)}
 
 /* Count */
-#count{padding:8px 14px 4px;font-size:11px;color:rgba(255,255,255,.3);flex-shrink:0}
+#count{padding:8px 14px 4px;font-size:11px;color:var(--dim);flex-shrink:0}
 
 /* List */
 #list{flex:1;overflow-y:auto;padding:0 8px 6px}
@@ -54,60 +118,60 @@ body{
   padding:9px 8px;border-radius:8px;
   cursor:pointer;transition:background .15s;margin-bottom:2px;
 }
-.note-item:hover{background:rgba(255,255,255,.07)}
+.note-item:hover{background:var(--hov)}
 .note-item:hover .del-btn{opacity:1}
 .color-bar{width:4px;height:36px;border-radius:2px;flex-shrink:0}
 .item-info{flex:1;min-width:0}
 .item-title{
   font-size:13px;font-weight:600;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f1f5f9;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2);
   cursor:text;
 }
-.item-title.untitled{color:rgba(255,255,255,.3);font-weight:400;font-style:italic}
+.item-title.untitled{color:var(--dim);font-weight:400;font-style:italic}
 .title-input{
-  width:100%;font-size:13px;font-weight:600;color:#f1f5f9;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);
+  width:100%;font-size:13px;font-weight:600;color:var(--text2);
+  background:var(--ibg);border:1px solid var(--mbd);
   border-radius:3px;padding:1px 5px;outline:none;
   font-family:'Segoe UI',Tahoma,sans-serif;min-width:0;
 }
-.item-preview{font-size:11px;color:rgba(255,255,255,.3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.item-preview{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .item-hidden .item-title,.item-hidden .item-preview{opacity:.45}
-.hidden-badge{font-size:9px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.4);padding:1px 5px;border-radius:10px;flex-shrink:0}
+.hidden-badge{font-size:9px;background:var(--bdg);color:var(--bdgc);padding:1px 5px;border-radius:10px;flex-shrink:0}
 .del-btn{
   opacity:0;width:26px;height:26px;border:none;background:transparent;
-  color:rgba(255,255,255,.4);border-radius:6px;cursor:pointer;
+  color:var(--delc);border-radius:6px;cursor:pointer;
   font-size:14px;flex-shrink:0;transition:all .15s;
   display:flex;align-items:center;justify-content:center;
 }
-.del-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
-#empty{text-align:center;color:rgba(255,255,255,.25);padding:40px 0;font-size:13px;line-height:1.8}
+.del-btn:hover{background:var(--delbg);color:var(--delch)}
+#empty{text-align:center;color:var(--dim);padding:40px 0;font-size:13px;line-height:1.8}
 
 /* Save path section */
 #path-section{
   flex-shrink:0;
-  border-top:1px solid rgba(255,255,255,.07);
-  padding:10px 12px;background:#0f172a;
+  border-top:1px solid var(--bdr);
+  padding:10px 12px;background:var(--bg2);
 }
 .path-header{
-  font-size:10px;font-weight:600;color:rgba(255,255,255,.35);
+  font-size:10px;font-weight:600;color:var(--dim);
   text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;
 }
 .path-row{display:flex;align-items:center;gap:8px}
 #path-val{
-  flex:1;font-size:11px;color:rgba(255,255,255,.45);
+  flex:1;font-size:11px;color:var(--sub);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   font-family:'Segoe UI',monospace;
 }
 #btn-path{
   flex-shrink:0;height:26px;padding:0 10px;border:none;border-radius:6px;
-  background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
+  background:var(--bbg);color:var(--bcol);
   font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
 }
-#btn-path:hover{background:rgba(255,255,255,.18);color:#fff}
+#btn-path:hover{background:var(--bhov);color:var(--bcolh)}
 
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+::-webkit-scrollbar-thumb{background:var(--scrl);border-radius:2px}
 
 /* Search */
 #search-wrap{
@@ -116,24 +180,56 @@ body{
 }
 #search-input{
   flex:1;height:28px;padding:0 8px;border:none;border-radius:6px;
-  background:rgba(255,255,255,.1);color:#f1f5f9;font-size:12px;
+  background:var(--ibg);color:var(--text2);font-size:12px;
   font-family:'Segoe UI',Tahoma,sans-serif;outline:none;transition:background .15s;
 }
-#search-input::placeholder{color:rgba(255,255,255,.3)}
-#search-input:focus{background:rgba(255,255,255,.15)}
+#search-input::placeholder{color:var(--iph)}
+#search-input:focus{background:var(--ibg2)}
 #search-clear{
   flex-shrink:0;width:22px;height:22px;border:none;background:transparent;
-  color:rgba(255,255,255,.35);cursor:pointer;border-radius:5px;
+  color:var(--dim);cursor:pointer;border-radius:5px;
   font-size:11px;display:none;align-items:center;justify-content:center;
 }
-#search-clear:hover{background:rgba(255,255,255,.1);color:#fff}
-mark{background:rgba(253,211,77,.3);color:#f8fafc;border-radius:2px;padding:0 1px}
+#search-clear:hover{background:var(--ibg);color:var(--text)}
+mark{background:var(--mkbg);color:var(--mkc);border-radius:2px;padding:0 1px}
+
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:var(--ovl);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;
+}
+.modal-overlay.hidden{display:none}
+.modal-box{
+  background:var(--mbg);border:1px solid var(--mbd);
+  border-radius:10px;padding:18px 18px 14px;
+  min-width:190px;max-width:245px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+}
+.modal-msg{
+  font-size:12.5px;color:var(--text);
+  line-height:1.55;margin-bottom:14px;word-break:break-word;
+}
+.modal-btns{display:flex;gap:6px;justify-content:flex-end}
+.modal-btn{
+  height:28px;padding:0 14px;border:none;border-radius:6px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'Segoe UI',Tahoma,sans-serif;transition:all .12s;
+}
+.modal-btn-cancel{background:var(--bbg);color:var(--bcol)}
+.modal-btn-cancel:hover{background:var(--bhov);color:var(--bcolh)}
+.modal-btn-ok{background:#2563eb;color:#fff}
+.modal-btn-ok:hover{background:#1d4ed8}
+.modal-btn-ok.danger{background:#ef4444}
+.modal-btn-ok.danger:hover{background:#dc2626}
 </style>
 </head>
 <body>
 
 <div id="titlebar">
   <span class="t-title">📌 StickyBoard</span>
+  <button class="wbtn" id="btn-theme" title="라이트 모드">🌙</button>
   <button class="wbtn" id="btn-wmin" title="최소화">─</button>
   <button class="wbtn" id="btn-wclose" title="닫기">✕</button>
 </div>
@@ -158,6 +254,16 @@ mark{background:rgba(253,211,77,.3);color:#f8fafc;border-radius:2px;padding:0 1p
   </div>
 </div>
 
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <p id="modal-msg" class="modal-msg"></p>
+    <div class="modal-btns">
+      <button id="modal-cancel" class="modal-btn modal-btn-cancel">취소</button>
+      <button id="modal-ok" class="modal-btn modal-btn-ok">확인</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -166,6 +272,46 @@ const CLR = {yellow:'#fcd34d',pink:'#f472b6',blue:'#60a5fa',green:'#4ade80',purp
 let allNotes = [];
 let searchQuery = '';
 
+/* ── 모달 ── */
+function showModal(msg, { cancel = false, danger = false } = {}) {
+  return new Promise(resolve => {
+    document.getElementById('modal-msg').textContent = msg;
+    const cancelBtn = document.getElementById('modal-cancel');
+    const okBtn     = document.getElementById('modal-ok');
+    cancelBtn.style.display = cancel ? '' : 'none';
+    okBtn.className = 'modal-btn modal-btn-ok' + (danger ? ' danger' : '');
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    function done(val) {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      cancelBtn.removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+      resolve(val);
+    }
+    function onCancel() { done(false); }
+    function onOk()     { done(true);  }
+    cancelBtn.addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+  });
+}
+
+/* ── 테마 ── */
+(function initTheme() {
+  const isLight = document.documentElement.classList.contains('light');
+  const btn = document.getElementById('btn-theme');
+  btn.textContent = isLight ? '☀' : '🌙';
+  btn.title = isLight ? '다크 모드' : '라이트 모드';
+})();
+
+document.getElementById('btn-theme').onclick = () => {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('btn-theme');
+  btn.textContent = isLight ? '☀' : '🌙';
+  btn.title = isLight ? '다크 모드' : '라이트 모드';
+};
+
+/* ── 유틸 ── */
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function highlight(text, query) {
   if (!text) return '';
   const safe = escHtml(text);
@@ -185,7 +331,6 @@ function applyFilter() {
     : allNotes;
   render(filtered);
 }
-
 function fmtDate(ts) {
   const d = new Date(ts), p = n => String(n).padStart(2,'0');
   return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -197,8 +342,8 @@ function getPreview(n) {
   }
   return (n.content||'').replace(/<[^>]+>/g,'').trim().slice(0,40) || '내용 없음';
 }
-function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+/* ── 렌더 ── */
 function render(notes) {
   const list = document.getElementById('list');
   document.getElementById('count').textContent = notes.length ? `메모 ${notes.length}개` : '';
@@ -233,12 +378,12 @@ function render(notes) {
     });
   });
   list.querySelectorAll('[data-del]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.dataset.del;
       const note = notes.find(n => n.id === id);
-      if (confirm(`"${note?.title || '제목 없음'}" 메모를 삭제하시겠습니까?`))
-        window.noteAPI.delete(id);
+      const ok = await showModal(`"${note?.title || '제목 없음'}" 메모를 삭제하시겠습니까?`, { cancel: true, danger: true });
+      if (ok) window.noteAPI.delete(id);
     });
   });
 }
@@ -257,8 +402,7 @@ function startTitleEdit(titleEl, id, currentTitle) {
   function save() {
     if (saved) return;
     saved = true;
-    const newTitle = input.value.trim();
-    window.noteAPI.update(id, { title: newTitle });
+    window.noteAPI.update(id, { title: input.value.trim() });
   }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter')  { e.preventDefault(); save(); input.blur(); }
@@ -301,7 +445,7 @@ document.getElementById('btn-wmin').onclick   = () => window.noteAPI.minimize();
 document.getElementById('btn-wclose').onclick = () => window.noteAPI.close();
 document.getElementById('btn-import').onclick = async () => {
   const count = await window.noteAPI.importTxt();
-  if (count > 0) alert(`${count}개 메모를 불러왔습니다.`);
+  if (count > 0) await showModal(`${count}개 메모를 불러왔습니다.`);
 };
 
 /* ── 초기화 ── */

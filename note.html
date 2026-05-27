@@ -341,7 +341,7 @@ document.querySelector('.n-tbar').addEventListener('mousedown', (e) => {
 });
 
 document.addEventListener('selectionchange', () => {
-  if (!note || note.mode !== 'text') return;
+  if (!note) return;
   document.querySelectorAll('.fbt[data-cmd]').forEach(btn => {
     btn.classList.toggle('active', !!document.queryCommandState(btn.dataset.cmd));
   });
