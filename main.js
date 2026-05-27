@@ -249,6 +249,7 @@ function createNoteWindow(note) {
   win.once('ready-to-show', () => {
     if (note.opacity && note.opacity !== 1) win.setOpacity(note.opacity);
     win.show();
+    notifyListWindow();
   });
 
   /* 닫기(×) → 숨기기, 종료 시에만 실제 닫기 */
@@ -393,7 +394,6 @@ function addNote() {
   saveMeta(meta);
   writeContent(filename, note);
   createNoteWindow(note);
-  notifyListWindow();
 }
 
 /* ── 단일 인스턴스 ── */
