@@ -1,0 +1,50 @@
+{
+  "name": "stickyboard",
+  "version": "1.0.0",
+  "description": "사내용 스티커메모 위젯",
+  "author": "internal",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "app-builder-bin": "^5.0.0-alpha.13",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.internal.stickyboard",
+    "productName": "StickyBoard",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "note.html",
+      "list.html"
+    ],
+    "toolsets": {
+      "winCodeSign": "1.0.0"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    }
+  }
+}

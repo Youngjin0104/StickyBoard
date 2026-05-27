@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>StickyBoard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  background:#1e293b;color:#f8fafc;
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* Title bar */
+#titlebar{
+  height:46px;flex-shrink:0;
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  background:#0f172a;-webkit-app-region:drag;
+  box-shadow:0 1px 0 rgba(255,255,255,.06);
+}
+#titlebar .t-title{font-size:14px;font-weight:700;flex:1;pointer-events:none}
+#titlebar button{-webkit-app-region:no-drag}
+.wbtn{
+  width:26px;height:26px;border:none;background:transparent;
+  color:rgba(255,255,255,.5);border-radius:5px;cursor:pointer;
+  font-size:12px;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.wbtn:hover{background:rgba(255,255,255,.1);color:#fff}
+#btn-wclose:hover{background:#ef4444;color:#fff}
+
+/* Actions */
+#actions{padding:10px 12px 6px;flex-shrink:0;display:flex;gap:6px}
+#btn-new{
+  flex:1;height:36px;border:none;border-radius:8px;
+  background:#f59e0b;color:#fff;
+  font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;
+}
+#btn-new:hover{background:#d97706}
+#btn-import{
+  height:36px;padding:0 12px;border:none;border-radius:8px;
+  background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);
+  font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+#btn-import:hover{background:rgba(255,255,255,.18);color:#fff}
+
+/* Count */
+#count{padding:8px 14px 4px;font-size:11px;color:rgba(255,255,255,.3);flex-shrink:0}
+
+/* List */
+#list{flex:1;overflow-y:auto;padding:0 8px 6px}
+.note-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 8px;border-radius:8px;
+  cursor:pointer;transition:background .15s;margin-bottom:2px;
+}
+.note-item:hover{background:rgba(255,255,255,.07)}
+.note-item:hover .del-btn{opacity:1}
+.color-bar{width:4px;height:36px;border-radius:2px;flex-shrink:0}
+.item-info{flex:1;min-width:0}
+.item-title{
+  font-size:13px;font-weight:600;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f1f5f9;
+  cursor:text;
+}
+.item-title.untitled{color:rgba(255,255,255,.3);font-weight:400;font-style:italic}
+.title-input{
+  width:100%;font-size:13px;font-weight:600;color:#f1f5f9;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);
+  border-radius:3px;padding:1px 5px;outline:none;
+  font-family:'Segoe UI',Tahoma,sans-serif;min-width:0;
+}
+.item-preview{font-size:11px;color:rgba(255,255,255,.3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.item-hidden .item-title,.item-hidden .item-preview{opacity:.45}
+.hidden-badge{font-size:9px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.4);padding:1px 5px;border-radius:10px;flex-shrink:0}
+.del-btn{
+  opacity:0;width:26px;height:26px;border:none;background:transparent;
+  color:rgba(255,255,255,.4);border-radius:6px;cursor:pointer;
+  font-size:14px;flex-shrink:0;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.del-btn:hover{background:rgba(239,68,68,.25);color:#fca5a5}
+#empty{text-align:center;color:rgba(255,255,255,.25);padding:40px 0;font-size:13px;line-height:1.8}
+
+/* Save path section */
+#path-section{
+  flex-shrink:0;
+  border-top:1px solid rgba(255,255,255,.07);
+  padding:10px 12px;background:#0f172a;
+}
+.path-header{
+  font-size:10px;font-weight:600;color:rgba(255,255,255,.35);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;
+}
+.path-row{display:flex;align-items:center;gap:8px}
+#path-val{
+  flex:1;font-size:11px;color:rgba(255,255,255,.45);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:'Segoe UI',monospace;
+}
+#btn-path{
+  flex-shrink:0;height:26px;padding:0 10px;border:none;border-radius:6px;
+  background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
+  font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+#btn-path:hover{background:rgba(255,255,255,.18);color:#fff}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+
+/* Search */
+#search-wrap{
+  padding:0 12px 6px;flex-shrink:0;
+  display:flex;align-items:center;gap:4px;
+}
+#search-input{
+  flex:1;height:28px;padding:0 8px;border:none;border-radius:6px;
+  background:rgba(255,255,255,.1);color:#f1f5f9;font-size:12px;
+  font-family:'Segoe UI',Tahoma,sans-serif;outline:none;transition:background .15s;
+}
+#search-input::placeholder{color:rgba(255,255,255,.3)}
+#search-input:focus{background:rgba(255,255,255,.15)}
+#search-clear{
+  flex-shrink:0;width:22px;height:22px;border:none;background:transparent;
+  color:rgba(255,255,255,.35);cursor:pointer;border-radius:5px;
+  font-size:11px;display:none;align-items:center;justify-content:center;
+}
+#search-clear:hover{background:rgba(255,255,255,.1);color:#fff}
+mark{background:rgba(253,211,77,.3);color:#f8fafc;border-radius:2px;padding:0 1px}
+</style>
+</head>
+<body>
+
+<div id="titlebar">
+  <span class="t-title">📌 StickyBoard</span>
+  <button class="wbtn" id="btn-wmin" title="최소화">─</button>
+  <button class="wbtn" id="btn-wclose" title="닫기">✕</button>
+</div>
+
+<div id="actions">
+  <button id="btn-new">＋ 새 메모</button>
+  <button id="btn-import">📂 불러오기</button>
+</div>
+
+<div id="search-wrap">
+  <input type="text" id="search-input" placeholder="🔍  제목·내용 검색...">
+  <button id="search-clear" title="지우기">✕</button>
+</div>
+<div id="count"></div>
+<div id="list"></div>
+
+<div id="path-section">
+  <div class="path-header">저장 경로</div>
+  <div class="path-row">
+    <div id="path-val">로딩 중...</div>
+    <button id="btn-path">변경</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const CLR = {yellow:'#fcd34d',pink:'#f472b6',blue:'#60a5fa',green:'#4ade80',purple:'#a78bfa',orange:'#fb923c',red:'#f87171',white:'#cbd5e1'};
+
+let allNotes = [];
+let searchQuery = '';
+
+function highlight(text, query) {
+  if (!text) return '';
+  const safe = escHtml(text);
+  if (!query) return safe;
+  const safeQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(safeQ, 'gi'), m => `<mark>${m}</mark>`);
+}
+function getSearchTarget(n) {
+  const body = n.mode === 'checklist'
+    ? (n.items||[]).map(i => i.text).join(' ')
+    : (n.content||'').replace(/<[^>]+>/g, '');
+  return ((n.title||'') + ' ' + body).toLowerCase();
+}
+function applyFilter() {
+  const filtered = searchQuery
+    ? allNotes.filter(n => getSearchTarget(n).includes(searchQuery))
+    : allNotes;
+  render(filtered);
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function getPreview(n) {
+  if (n.mode === 'checklist') {
+    const total = (n.items||[]).length, done = (n.items||[]).filter(i=>i.done).length;
+    return total ? `체크리스트 ${done}/${total}` : '항목 없음';
+  }
+  return (n.content||'').replace(/<[^>]+>/g,'').trim().slice(0,40) || '내용 없음';
+}
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render(notes) {
+  const list = document.getElementById('list');
+  document.getElementById('count').textContent = notes.length ? `메모 ${notes.length}개` : '';
+  if (!notes.length) {
+    list.innerHTML = '<div id="empty">메모가 없습니다<br>+ 새 메모 버튼으로 시작하세요</div>';
+    return;
+  }
+  const sorted = [...notes].sort((a,b) => b.ts - a.ts);
+  list.innerHTML = sorted.map(n => `
+    <div class="note-item${n.visible===false?' item-hidden':''}" data-id="${n.id}">
+      <div class="color-bar" style="background:${CLR[n.color]||'#fcd34d'}"></div>
+      <div class="item-info">
+        <div class="item-title${n.title?'':' untitled'}">${n.title ? highlight(n.title, searchQuery) : '제목 없음'}</div>
+        <div class="item-preview">${highlight(getPreview(n), searchQuery)} · ${fmtDate(n.ts)}</div>
+      </div>
+      ${n.visible===false ? '<span class="hidden-badge">숨김</span>' : ''}
+      <button class="del-btn" data-del="${n.id}" title="삭제">🗑</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.note-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-del]') || e.target.closest('.item-title')) return;
+      window.noteAPI.focus(el.dataset.id);
+    });
+  });
+  list.querySelectorAll('.item-title').forEach(titleEl => {
+    titleEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = titleEl.closest('.note-item').dataset.id;
+      const note = notes.find(n => n.id === id);
+      startTitleEdit(titleEl, id, note?.title || '');
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.del;
+      const note = notes.find(n => n.id === id);
+      if (confirm(`"${note?.title || '제목 없음'}" 메모를 삭제하시겠습니까?`))
+        window.noteAPI.delete(id);
+    });
+  });
+}
+
+/* ── 타이틀 인라인 편집 ── */
+function startTitleEdit(titleEl, id, currentTitle) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'title-input';
+  input.value = currentTitle;
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let saved = false;
+  function save() {
+    if (saved) return;
+    saved = true;
+    const newTitle = input.value.trim();
+    window.noteAPI.update(id, { title: newTitle });
+  }
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); save(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; input.blur(); }
+  });
+  input.addEventListener('blur', save);
+}
+
+/* ── 검색 ── */
+document.getElementById('search-input').addEventListener('input', () => {
+  searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+  document.getElementById('search-clear').style.display = searchQuery ? 'flex' : 'none';
+  applyFilter();
+});
+document.getElementById('search-clear').onclick = () => {
+  searchQuery = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  applyFilter();
+};
+
+/* ── 저장 경로 ── */
+function loadPath() {
+  window.noteAPI.getNotesDir().then(dir => {
+    document.getElementById('path-val').textContent = dir;
+    document.getElementById('path-val').title = dir;
+  });
+}
+document.getElementById('btn-path').onclick = async () => {
+  const newDir = await window.noteAPI.changeNotesDir();
+  if (newDir) {
+    document.getElementById('path-val').textContent = newDir;
+    document.getElementById('path-val').title = newDir;
+  }
+};
+
+/* ── 창 컨트롤 ── */
+document.getElementById('btn-new').onclick    = () => window.noteAPI.addNote();
+document.getElementById('btn-wmin').onclick   = () => window.noteAPI.minimize();
+document.getElementById('btn-wclose').onclick = () => window.noteAPI.close();
+document.getElementById('btn-import').onclick = async () => {
+  const count = await window.noteAPI.importTxt();
+  if (count > 0) alert(`${count}개 메모를 불러왔습니다.`);
+};
+
+/* ── 초기화 ── */
+window.noteAPI.onUpdate((notes) => { allNotes = notes; applyFilter(); });
+window.noteAPI.getAll().then(notes => { allNotes = notes; applyFilter(); });
+loadPath();
+</script>
+</body>
+</html>

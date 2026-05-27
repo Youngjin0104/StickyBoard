@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StickyBoard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:'Segoe UI',Tahoma,Geneva,sans-serif;
+  height:100vh;overflow:hidden;display:flex;flex-direction:column;
+  background:#c8a97a;
+}
+
+/* ── TOP BAR ── */
+#topbar{
+  height:52px;background:#1e293b;
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  flex-shrink:0;
+  box-shadow:0 2px 12px rgba(0,0,0,0.35);z-index:100;
+  /* Electron 드래그 영역 */
+  -webkit-app-region: drag;
+}
+/* 드래그 영역 내 인터랙티브 요소는 no-drag */
+#topbar button,
+#topbar input,
+#topbar label,
+#search-wrap,
+#tb-actions,
+#win-ctrl {
+  -webkit-app-region: no-drag;
+}
+
+#app-title{
+  font-size:15px;font-weight:700;color:#f8fafc;
+  letter-spacing:0.3px;white-space:nowrap;margin-right:4px;
+  pointer-events:none;
+}
+#search-wrap{flex:1;max-width:280px;position:relative}
+#search{
+  width:100%;background:rgba(255,255,255,0.1);
+  border:1px solid rgba(255,255,255,0.15);border-radius:18px;
+  padding:6px 12px 6px 30px;color:#f8fafc;font-size:13px;outline:none;transition:all .2s;
+}
+#search::placeholder{color:rgba(255,255,255,0.38)}
+#search:focus{background:rgba(255,255,255,0.16);border-color:rgba(255,255,255,0.3)}
+.srch-icon{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  font-size:12px;color:rgba(255,255,255,0.45);pointer-events:none;
+}
+
+#tb-actions{display:flex;align-items:center;gap:7px;margin-left:auto}
+.tbtn{
+  height:32px;padding:0 13px;border:none;border-radius:16px;
+  font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+#btn-new{background:#f59e0b;color:#fff}
+#btn-new:hover{background:#d97706;transform:translateY(-1px)}
+.tbtn-ghost{
+  background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.75);
+  border:1px solid rgba(255,255,255,0.18);
+}
+.tbtn-ghost:hover{background:rgba(255,255,255,0.18)}
+#note-count{font-size:11px;color:rgba(255,255,255,0.38);white-space:nowrap}
+
+/* ── 윈도우 컨트롤 버튼 ── */
+#win-ctrl{display:none;align-items:center;gap:1px;margin-left:8px}
+.wbtn{
+  width:28px;height:28px;border:none;background:transparent;
+  border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;
+  color:rgba(255,255,255,0.6);transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.wbtn:hover{background:rgba(255,255,255,0.12);color:#fff}
+#wbtn-close:hover{background:#ef4444;color:#fff}
+#wbtn-aot{font-size:14px}
+#wbtn-aot.on{color:#fcd34d}
+
+/* ── BOARD ── */
+#board{
+  flex:1;position:relative;overflow:hidden;
+  background:#c8a97a;
+  background-image:
+    radial-gradient(ellipse at 15% 25%,rgba(210,175,120,.55) 0%,transparent 50%),
+    radial-gradient(ellipse at 82% 68%,rgba(155,108,60,.35) 0%,transparent 42%),
+    radial-gradient(ellipse at 50% 50%,rgba(185,148,90,.2) 0%,transparent 60%);
+}
+#empty-msg{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;color:rgba(255,255,255,0.45);
+  pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.em-icon{font-size:54px;margin-bottom:12px}
+.em-text{font-size:15px;font-weight:600;margin-bottom:5px}
+.em-sub{font-size:12px;opacity:.75}
+
+/* ── NOTE ── */
+.note{
+  position:absolute;display:flex;flex-direction:column;
+  min-width:180px;min-height:140px;border-radius:2px;
+  box-shadow:3px 6px 18px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);
+  transition:box-shadow .2s;user-select:none;
+}
+.note:hover{box-shadow:4px 9px 26px rgba(0,0,0,.33),0 0 0 1px rgba(0,0,0,.08)}
+.note.pinned{box-shadow:4px 9px 30px rgba(0,0,0,.42),0 0 0 2px rgba(251,191,36,.55)}
+.note.s-hide{display:none!important}
+
+/* Note colors */
+.note[data-color=yellow] .n-hd{background:#fcd34d}
+.note[data-color=yellow] .n-body{background:#fef9c3}
+.note[data-color=pink]   .n-hd{background:#f472b6}
+.note[data-color=pink]   .n-body{background:#fce7f3}
+.note[data-color=blue]   .n-hd{background:#60a5fa}
+.note[data-color=blue]   .n-body{background:#dbeafe}
+.note[data-color=green]  .n-hd{background:#4ade80}
+.note[data-color=green]  .n-body{background:#dcfce7}
+.note[data-color=purple] .n-hd{background:#a78bfa}
+.note[data-color=purple] .n-body{background:#ede9fe}
+.note[data-color=orange] .n-hd{background:#fb923c}
+.note[data-color=orange] .n-body{background:#ffedd5}
+.note[data-color=red]    .n-hd{background:#f87171}
+.note[data-color=red]    .n-body{background:#fee2e2}
+.note[data-color=white]  .n-hd{background:#cbd5e1}
+.note[data-color=white]  .n-body{background:#f8fafc}
+
+/* Header */
+.n-hd{
+  height:30px;border-radius:2px 2px 0 0;
+  display:flex;align-items:center;padding:0 5px;gap:1px;
+  cursor:grab;flex-shrink:0;
+}
+.n-hd:active{cursor:grabbing}
+.n-date{flex:1;font-size:10px;color:rgba(0,0,0,.42);pointer-events:none;padding-left:2px}
+.nbtn{
+  width:21px;height:21px;border:none;background:transparent;
+  border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:rgba(0,0,0,.5);transition:background .15s;flex-shrink:0;
+}
+.nbtn:hover{background:rgba(0,0,0,.12);color:rgba(0,0,0,.85)}
+.nbtn.on{color:#1d4ed8}
+
+/* Color picker */
+.cp-wrap{position:relative}
+.cp-pal{
+  display:none;position:absolute;top:25px;right:0;
+  background:#fff;border-radius:10px;padding:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);z-index:500;
+  flex-wrap:wrap;gap:5px;width:106px;
+}
+.cp-pal.open{display:flex}
+.cp-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s}
+.cp-dot:hover{transform:scale(1.22)}
+.cp-dot.sel{border-color:#1e293b}
+
+/* Toolbar */
+.n-tbar{
+  display:flex;align-items:center;padding:3px 7px;gap:1px;
+  border-bottom:1px solid rgba(0,0,0,.07);flex-shrink:0;
+}
+.note[data-color=yellow] .n-tbar{background:rgba(252,211,77,.25)}
+.note[data-color=pink]   .n-tbar{background:rgba(244,114,182,.14)}
+.note[data-color=blue]   .n-tbar{background:rgba(96,165,250,.14)}
+.note[data-color=green]  .n-tbar{background:rgba(74,222,128,.14)}
+.note[data-color=purple] .n-tbar{background:rgba(167,139,250,.14)}
+.note[data-color=orange] .n-tbar{background:rgba(251,146,60,.14)}
+.note[data-color=red]    .n-tbar{background:rgba(248,113,113,.14)}
+.note[data-color=white]  .n-tbar{background:rgba(203,213,225,.18)}
+.fbt{
+  width:22px;height:22px;border:none;background:transparent;
+  border-radius:3px;cursor:pointer;font-size:11px;font-weight:700;
+  color:rgba(0,0,0,.55);transition:background .12s;
+}
+.fbt:hover{background:rgba(0,0,0,.1)}
+.tsep{width:1px;height:14px;background:rgba(0,0,0,.14);margin:0 2px}
+.mdbtn{
+  font-size:10px;font-weight:700;padding:2px 7px;border:none;border-radius:4px;
+  background:rgba(0,0,0,.08);color:rgba(0,0,0,.6);cursor:pointer;
+  transition:all .12s;white-space:nowrap;
+}
+.mdbtn:hover{background:rgba(0,0,0,.14)}
+.mdbtn.ck{background:#2563eb;color:#fff}
+
+/* Body */
+.n-body{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  padding:8px 10px;border-radius:0 0 2px 2px;position:relative;
+}
+.n-txt{
+  width:100%;min-height:70px;outline:none;border:none;background:transparent;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  font-size:13.5px;line-height:1.65;color:#1e293b;
+  word-break:break-word;white-space:pre-wrap;
+}
+.n-txt:empty::before{content:attr(data-ph);color:rgba(0,0,0,.27);pointer-events:none}
+
+/* Checklist */
+.chk-list{display:flex;flex-direction:column;gap:4px}
+.ck-row{display:flex;align-items:flex-start;gap:5px}
+.ck-row input[type=checkbox]{margin-top:3px;cursor:pointer;flex-shrink:0;accent-color:#2563eb}
+.ck-span{
+  flex:1;outline:none;border:none;background:transparent;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  font-size:13.5px;line-height:1.55;color:#1e293b;min-width:0;
+}
+.ck-span.done{text-decoration:line-through;color:rgba(0,0,0,.35)}
+.ck-del{opacity:0;border:none;background:transparent;cursor:pointer;color:rgba(0,0,0,.4);font-size:14px;padding:0;line-height:1;transition:opacity .15s}
+.ck-row:hover .ck-del{opacity:1}
+.ck-add{
+  margin-top:2px;border:none;background:transparent;
+  color:rgba(0,0,0,.35);font-size:12px;cursor:pointer;text-align:left;padding:0;
+  transition:color .15s;font-family:'Segoe UI',Tahoma,sans-serif;
+}
+.ck-add:hover{color:rgba(0,0,0,.65)}
+
+/* Resize */
+.rsz{
+  position:absolute;bottom:3px;right:3px;width:14px;height:14px;
+  cursor:nwse-resize;color:rgba(0,0,0,.22);font-size:9px;
+  display:flex;align-items:flex-end;justify-content:flex-end;line-height:1;
+}
+
+/* ── MODAL ── */
+#modal-ov{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:2000;align-items:center;justify-content:center;
+}
+#modal-ov.open{display:flex}
+#modal-box{
+  background:#fff;border-radius:12px;padding:22px 22px 18px;
+  max-width:300px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.25);
+}
+#modal-txt{font-size:14px;color:#1e293b;margin-bottom:18px;line-height:1.5}
+.m-btns{display:flex;gap:8px;justify-content:flex-end}
+.mbtn{padding:7px 16px;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;transition:all .15s}
+#m-cancel{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+#m-cancel:hover{background:#e2e8f0}
+#m-ok{background:#ef4444;color:#fff;border:none}
+#m-ok:hover{background:#dc2626}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span id="app-title">📌 StickyBoard</span>
+  <div id="search-wrap">
+    <span class="srch-icon">🔍</span>
+    <input id="search" type="text" placeholder="메모 검색... (Ctrl+F)">
+  </div>
+  <div id="tb-actions">
+    <button class="tbtn" id="btn-new">＋ 새 메모</button>
+    <button class="tbtn tbtn-ghost" id="btn-export" title="JSON 백업">📥 백업</button>
+    <label class="tbtn tbtn-ghost" title="JSON 복원" style="cursor:pointer;display:flex;align-items:center">
+      📤 복원<input type="file" id="file-in" accept=".json" style="display:none">
+    </label>
+    <span id="note-count"></span>
+  </div>
+  <!-- Electron 전용 창 컨트롤 -->
+  <div id="win-ctrl">
+    <button class="wbtn" id="wbtn-aot" title="항상 위에 표시 토글">📌</button>
+    <button class="wbtn" id="wbtn-min" title="최소화">─</button>
+    <button class="wbtn" id="wbtn-max" title="최대화">□</button>
+    <button class="wbtn" id="wbtn-close" title="트레이로 숨기기">✕</button>
+  </div>
+</div>
+
+<div id="board">
+  <div id="empty-msg">
+    <div class="em-icon">📝</div>
+    <div class="em-text">메모가 없습니다</div>
+    <div class="em-sub">＋ 새 메모 버튼 또는 Ctrl+N 으로 시작하세요</div>
+  </div>
+</div>
+
+<div id="modal-ov">
+  <div id="modal-box">
+    <div id="modal-txt">이 메모를 삭제하시겠습니까?</div>
+    <div class="m-btns">
+      <button class="mbtn" id="m-cancel">취소</button>
+      <button class="mbtn" id="m-ok">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── Constants ─────────────────────────────────────────────── */
+const STORE   = 'stickyboard_v2';
+const COLORS  = ['yellow','pink','blue','green','purple','orange','red','white'];
+const CLR_HD  = {yellow:'#fcd34d',pink:'#f472b6',blue:'#60a5fa',green:'#4ade80',purple:'#a78bfa',orange:'#fb923c',red:'#f87171',white:'#cbd5e1'};
+
+/* ── State ─────────────────────────────────────────────────── */
+let notes = [];
+let modalCb = null;
+
+/* ── Helpers ───────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+function fmtDate(ts) {
+  const d = new Date(ts), p = n => String(n).padStart(2,'0');
+  return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function rndColor() { return COLORS[Math.floor(Math.random()*6)]; }
+function maxZ() { return notes.reduce((m,n) => Math.max(m, n.z||0), 0); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function debounce(fn,ms) { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+/* ── Storage ───────────────────────────────────────────────── */
+function save() { localStorage.setItem(STORE, JSON.stringify(notes)); refreshCount(); }
+const lazySave = debounce(save, 500);
+
+function load() {
+  try { notes = JSON.parse(localStorage.getItem(STORE)) || []; } catch { notes = []; }
+}
+
+function refreshCount() {
+  $('note-count').textContent = notes.length ? `${notes.length}개` : '';
+  $('empty-msg').style.display = notes.length ? 'none' : '';
+}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+function modal(msg, cb) { $('modal-txt').textContent = msg; $('modal-ov').classList.add('open'); modalCb = cb; }
+$('m-cancel').onclick = () => $('modal-ov').classList.remove('open');
+$('m-ok').onclick = () => { $('modal-ov').classList.remove('open'); modalCb?.(); };
+
+/* ── Create Note ───────────────────────────────────────────── */
+function addNote() {
+  const b = $('board');
+  const note = {
+    id:uid(), color:rndColor(), mode:'text', content:'', items:[],
+    x: Math.max(10, Math.random() * Math.max(10, b.clientWidth-260)),
+    y: Math.max(10, Math.random() * Math.max(10, b.clientHeight-270)),
+    w:230, h:215, pinned:false, z:maxZ()+1, ts:Date.now()
+  };
+  notes.push(note);
+  save();
+  renderNote(note);
+  setTimeout(() => $(`n${note.id}`)?.querySelector('.n-txt')?.focus(), 40);
+}
+
+/* ── Render Note ───────────────────────────────────────────── */
+function renderNote(note) {
+  $(`n${note.id}`)?.remove();
+  const el = document.createElement('div');
+  el.className = 'note' + (note.pinned ? ' pinned' : '');
+  el.id = `n${note.id}`;
+  el.dataset.color = note.color;
+  el.style.cssText = `left:${note.x}px;top:${note.y}px;width:${note.w}px;height:${note.h}px;z-index:${note.z||10}`;
+
+  const dots = COLORS.map(c =>
+    `<div class="cp-dot${note.color===c?' sel':''}" data-c="${c}" style="background:${CLR_HD[c]}"></div>`
+  ).join('');
+  const isCk = note.mode === 'checklist';
+
+  el.innerHTML = `
+    <div class="n-hd">
+      <span class="n-date">${fmtDate(note.ts)}${note.pinned?' 📌':''}</span>
+      <button class="nbtn${note.pinned?' on':''}" data-a="pin" title="${note.pinned?'고정 해제':'고정'}">📍</button>
+      <div class="cp-wrap">
+        <button class="nbtn" data-a="cp" title="색상">🎨</button>
+        <div class="cp-pal" id="cp${note.id}">${dots}</div>
+      </div>
+      <button class="nbtn" data-a="del" title="삭제">✕</button>
+    </div>
+    <div class="n-tbar">
+      <button class="fbt" data-cmd="bold"><b>B</b></button>
+      <button class="fbt" data-cmd="italic"><i>I</i></button>
+      <button class="fbt" data-cmd="underline"><u>U</u></button>
+      <button class="fbt" data-cmd="strikeThrough"><s>S</s></button>
+      <div class="tsep"></div>
+      <button class="mdbtn${isCk?' ck':''}" data-a="mode">${isCk?'✓ 체크리스트':'✎ 텍스트'}</button>
+    </div>
+    <div class="n-body">${isCk ? renderCk(note) : renderTxt(note)}</div>
+    <div class="rsz" data-a="rsz">◢</div>`;
+
+  $('board').appendChild(el);
+  wireNote(el, note);
+}
+
+function renderTxt(n) {
+  return `<div class="n-txt" contenteditable="true" data-ph="메모를 입력하세요...">${n.content||''}</div>`;
+}
+function renderCk(n) {
+  const rows = (n.items||[]).map((it,i) => `
+    <div class="ck-row" data-i="${i}">
+      <input type="checkbox"${it.done?' checked':''}><span class="ck-span${it.done?' done':''}" contenteditable="true">${esc(it.text)}</span>
+      <button class="ck-del">×</button>
+    </div>`).join('');
+  return `<div class="chk-list">${rows}<button class="ck-add">＋ 항목 추가</button></div>`;
+}
+
+/* ── Wire Note Events ──────────────────────────────────────── */
+function wireNote(el, note) {
+  el.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('[data-a=rsz]')) { note.z=maxZ()+1; el.style.zIndex=note.z; lazySave(); }
+  });
+  el.querySelector('.n-hd').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-a]')?.dataset.a;
+    if (a==='del') modal('이 메모를 삭제하시겠습니까?', () => deleteNote(note.id, el));
+    else if (a==='pin') { note.pinned=!note.pinned; save(); renderNote(note); }
+    else if (a==='cp') { $(`cp${note.id}`).classList.toggle('open'); e.stopPropagation(); }
+  });
+  $(`cp${note.id}`).addEventListener('click', (e) => {
+    const dot = e.target.closest('.cp-dot'); if (!dot) return;
+    note.color=dot.dataset.c; save(); renderNote(note); e.stopPropagation();
+  });
+  el.querySelector('.n-tbar').addEventListener('mousedown', (e) => {
+    const cmd = e.target.closest('[data-cmd]')?.dataset.cmd;
+    if (cmd) { e.preventDefault(); document.execCommand(cmd,false,null); return; }
+    if (e.target.closest('[data-a=mode]')) {
+      e.preventDefault();
+      note.mode = note.mode==='checklist' ? 'text' : 'checklist';
+      if (note.mode==='checklist' && !note.items?.length) note.items=[{text:'',done:false}];
+      save(); renderNote(note);
+      setTimeout(() => { const t=$(`n${note.id}`)?.querySelector(note.mode==='checklist'?'.ck-span':'.n-txt'); t?.focus(); }, 30);
+    }
+  });
+  if (note.mode==='text') {
+    const txt = el.querySelector('.n-txt');
+    txt?.addEventListener('input', () => { note.content=txt.innerHTML; lazySave(); });
+  }
+  if (note.mode==='checklist') {
+    const list = el.querySelector('.chk-list');
+    list.addEventListener('change', (e) => {
+      if (e.target.type!=='checkbox') return;
+      const i=+e.target.closest('.ck-row').dataset.i;
+      note.items[i].done=e.target.checked;
+      e.target.nextElementSibling.classList.toggle('done',e.target.checked);
+      lazySave();
+    });
+    list.addEventListener('input', (e) => {
+      const row=e.target.closest('.ck-row');
+      if (row && e.target.classList.contains('ck-span')) { note.items[+row.dataset.i].text=e.target.textContent; lazySave(); }
+    });
+    list.addEventListener('keydown', (e) => {
+      if (!e.target.classList.contains('ck-span')) return;
+      const i=+e.target.closest('.ck-row').dataset.i;
+      if (e.key==='Enter') {
+        e.preventDefault(); note.items.splice(i+1,0,{text:'',done:false}); save(); renderNote(note);
+        setTimeout(()=>$(`n${note.id}`)?.querySelectorAll('.ck-span')[i+1]?.focus(),20);
+      }
+      if (e.key==='Backspace' && !e.target.textContent && note.items.length>1) {
+        e.preventDefault(); note.items.splice(i,1); save(); renderNote(note);
+        setTimeout(()=>{ const s=$(`n${note.id}`)?.querySelectorAll('.ck-span'); s?.[Math.max(0,i-1)]?.focus(); },20);
+      }
+    });
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ck-del')) { note.items.splice(+e.target.closest('.ck-row').dataset.i,1); save(); renderNote(note); }
+      if (e.target.classList.contains('ck-add')) {
+        note.items.push({text:'',done:false}); save(); renderNote(note);
+        setTimeout(()=>{ const s=$(`n${note.id}`)?.querySelectorAll('.ck-span'); s?.[s.length-1]?.focus(); },20);
+      }
+    });
+  }
+  drag(el, el.querySelector('.n-hd'), note);
+  resize(el, el.querySelector('.rsz'), note);
+  document.addEventListener('click', () => $(`cp${note.id}`)?.classList.remove('open'));
+}
+
+function drag(el, handle, note) {
+  handle.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button,.cp-pal,.cp-wrap')) return;
+    e.preventDefault();
+    const sx=e.clientX,sy=e.clientY,sl=note.x,st=note.y;
+    const b=$('board');
+    const mv=(e)=>{ note.x=Math.max(0,Math.min(b.clientWidth-note.w,sl+e.clientX-sx)); note.y=Math.max(0,Math.min(b.clientHeight-30,st+e.clientY-sy)); el.style.left=note.x+'px'; el.style.top=note.y+'px'; };
+    const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); document.body.style.cursor=''; lazySave(); };
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); document.body.style.cursor='grabbing';
+  });
+}
+
+function resize(el, handle, note) {
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=note.w,sh=note.h;
+    const mv=(e)=>{ note.w=Math.max(180,sw+e.clientX-sx); note.h=Math.max(140,sh+e.clientY-sy); el.style.width=note.w+'px'; el.style.height=note.h+'px'; };
+    const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); document.body.style.cursor=''; lazySave(); };
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); document.body.style.cursor='nwse-resize';
+  });
+}
+
+function deleteNote(id, el) {
+  notes = notes.filter(n=>n.id!==id);
+  el.style.transition='transform .2s,opacity .2s'; el.style.transform='scale(.82) rotate(-3deg)'; el.style.opacity='0';
+  setTimeout(()=>el.remove(),220); save();
+}
+
+/* ── Search ────────────────────────────────────────────────── */
+$('search').addEventListener('input', (e) => {
+  const q=e.target.value.trim().toLowerCase();
+  notes.forEach(note=>{
+    const el=$(`n${note.id}`); if(!el) return;
+    if(!q){el.classList.remove('s-hide');return;}
+    const text=note.mode==='text'?(note.content||'').replace(/<[^>]+>/g,'').toLowerCase():(note.items||[]).map(i=>i.text).join(' ').toLowerCase();
+    el.classList.toggle('s-hide',!text.includes(q));
+  });
+});
+
+/* ── Export / Import ───────────────────────────────────────── */
+$('btn-export').onclick = () => {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(notes,null,2)],{type:'application/json'}));
+  a.download=`stickyboard_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+};
+$('file-in').onchange = (e) => {
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=(ev)=>{
+    try {
+      const data=JSON.parse(ev.target.result); if(!Array.isArray(data)) throw 0;
+      modal(`백업 파일 ${data.length}개 메모를 불러올까요?\n현재 메모는 모두 교체됩니다.`,()=>{
+        $('board').querySelectorAll('.note').forEach(n=>n.remove());
+        notes=data; notes.forEach(n=>renderNote(n)); save();
+      });
+    } catch { alert('올바른 백업 파일이 아닙니다.'); }
+  };
+  r.readAsText(f); e.target.value='';
+};
+
+/* ── Shortcuts ─────────────────────────────────────────────── */
+document.addEventListener('keydown',(e)=>{
+  if(e.ctrlKey&&e.key==='n'){e.preventDefault();addNote();}
+  if(e.ctrlKey&&e.key==='f'){e.preventDefault();$('search').focus();$('search').select();}
+  if(e.key==='Escape'){$('search').blur();$('search').value='';$('search').dispatchEvent(new Event('input'));}
+});
+$('btn-new').onclick = addNote;
+
+/* ── Electron 윈도우 컨트롤 연동 ──────────────────────────── */
+if (window.electronAPI) {
+  // 컨트롤 버튼 표시
+  $('win-ctrl').style.display = 'flex';
+
+  // 버튼 이벤트
+  $('wbtn-min').onclick   = () => window.electronAPI.minimize();
+  $('wbtn-max').onclick   = () => window.electronAPI.maximize();
+  $('wbtn-close').onclick = () => window.electronAPI.close();
+  $('wbtn-aot').onclick   = () => window.electronAPI.toggleAOT();
+
+  // 항상 위에 표시 상태 반영
+  window.electronAPI.onAOTChanged((val) => {
+    const btn = $('wbtn-aot');
+    btn.classList.toggle('on', val);
+    btn.title = val ? '항상 위에 표시 (ON) — 클릭해서 해제' : '항상 위에 표시 (OFF) — 클릭해서 활성화';
+  });
+
+  // 최대화 상태 반영
+  window.electronAPI.onMaximized((val) => {
+    $('wbtn-max').textContent = val ? '❐' : '□';
+    $('wbtn-max').title = val ? '창 복원' : '최대화';
+  });
+}
+
+/* ── Init ──────────────────────────────────────────────────── */
+load();
+notes.forEach(n=>renderNote(n));
+refreshCount();
+</script>
+</body>
+</html>

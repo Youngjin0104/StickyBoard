@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>StickyNote</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:transparent;overflow:hidden}
+
+.note{
+  display:flex;flex-direction:column;
+  width:100%;height:100%;
+  border-radius:3px;
+  box-shadow:2px 5px 20px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.1);
+  overflow:hidden;
+}
+
+/* Colors – header */
+.note[data-color=yellow] .n-hd{background:#fcd34d}
+.note[data-color=pink]   .n-hd{background:#f472b6}
+.note[data-color=blue]   .n-hd{background:#60a5fa}
+.note[data-color=green]  .n-hd{background:#4ade80}
+.note[data-color=purple] .n-hd{background:#a78bfa}
+.note[data-color=orange] .n-hd{background:#fb923c}
+.note[data-color=red]    .n-hd{background:#f87171}
+.note[data-color=white]  .n-hd{background:#cbd5e1}
+
+/* Colors – toolbar (solid) */
+.note[data-color=yellow] .n-tbar{background:#fde68a}
+.note[data-color=pink]   .n-tbar{background:#fbcfe8}
+.note[data-color=blue]   .n-tbar{background:#bfdbfe}
+.note[data-color=green]  .n-tbar{background:#bbf7d0}
+.note[data-color=purple] .n-tbar{background:#ddd6fe}
+.note[data-color=orange] .n-tbar{background:#fed7aa}
+.note[data-color=red]    .n-tbar{background:#fecaca}
+.note[data-color=white]  .n-tbar{background:#e2e8f0}
+
+/* Colors – find bar */
+.note[data-color=yellow] .find-bar{background:#fde68a}
+.note[data-color=pink]   .find-bar{background:#fbcfe8}
+.note[data-color=blue]   .find-bar{background:#bfdbfe}
+.note[data-color=green]  .find-bar{background:#bbf7d0}
+.note[data-color=purple] .find-bar{background:#ddd6fe}
+.note[data-color=orange] .find-bar{background:#fed7aa}
+.note[data-color=red]    .find-bar{background:#fecaca}
+.note[data-color=white]  .find-bar{background:#e2e8f0}
+
+/* Colors – body */
+.note[data-color=yellow] .n-body{background:#fef9c3}
+.note[data-color=pink]   .n-body{background:#fce7f3}
+.note[data-color=blue]   .n-body{background:#dbeafe}
+.note[data-color=green]  .n-body{background:#dcfce7}
+.note[data-color=purple] .n-body{background:#ede9fe}
+.note[data-color=orange] .n-body{background:#ffedd5}
+.note[data-color=red]    .n-body{background:#fee2e2}
+.note[data-color=white]  .n-body{background:#f8fafc}
+
+/* Header */
+.n-hd{
+  height:28px;flex-shrink:0;
+  display:flex;align-items:center;padding:0 4px;gap:1px;
+  cursor:grab;-webkit-app-region:drag;
+}
+.n-hd:active{cursor:grabbing}
+.n-hd button,.n-hd .cp-wrap{-webkit-app-region:no-drag}
+
+/* Title placeholder in drag area */
+.n-drag{
+  flex:1;min-width:0;
+  font-size:11px;color:rgba(0,0,0,.5);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  padding:0 3px;pointer-events:none;user-select:none;
+}
+.n-drag:empty::before{content:'제목 없음';color:rgba(0,0,0,.22);font-style:italic}
+
+.nbtn{
+  width:20px;height:20px;border:none;background:transparent;
+  border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:rgba(0,0,0,.45);transition:background .15s;flex-shrink:0;
+}
+.nbtn:hover{background:rgba(0,0,0,.13);color:rgba(0,0,0,.8)}
+
+/* Color picker */
+.cp-wrap{position:relative}
+.cp-pal{
+  display:none;position:absolute;top:24px;right:0;
+  background:#fff;border-radius:10px;padding:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:500;
+  flex-wrap:wrap;gap:5px;width:106px;
+}
+.cp-pal.open{display:flex}
+.cp-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s}
+.cp-dot:hover{transform:scale(1.22)}
+.cp-dot.sel{border-color:#1e293b}
+
+/* Toolbar */
+.n-tbar{
+  display:flex;align-items:center;padding:2px 7px;gap:1px;
+  border-bottom:1px solid rgba(0,0,0,.07);flex-shrink:0;
+}
+.fbt{
+  width:22px;height:22px;border:none;background:transparent;
+  border-radius:3px;cursor:pointer;font-size:11px;font-weight:700;
+  color:rgba(0,0,0,.55);transition:background .12s;
+}
+.fbt:hover{background:rgba(0,0,0,.1)}
+.tsep{width:1px;height:14px;background:rgba(0,0,0,.13);margin:0 2px}
+.mdbtn{
+  font-size:10px;font-weight:700;padding:2px 7px;border:none;border-radius:4px;
+  background:rgba(0,0,0,.1);color:rgba(0,0,0,.6);cursor:pointer;
+  transition:all .12s;white-space:nowrap;
+}
+.mdbtn:hover{background:rgba(0,0,0,.18)}
+.mdbtn.ck{background:#2563eb;color:#fff}
+
+/* Body */
+.n-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 10px}
+.n-body.text-mode{cursor:text}
+.n-txt{
+  width:100%;min-height:50px;outline:none;border:none;background:transparent;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  font-size:13.5px;line-height:1.65;color:#1e293b;
+  word-break:break-word;white-space:pre-wrap;
+}
+.n-txt ul,.n-txt ol{padding-left:18px;margin:2px 0}
+.n-txt li{margin:1px 0}
+.n-txt:empty::before{content:attr(data-ph);color:rgba(0,0,0,.27);pointer-events:none}
+
+/* Checklist */
+.chk-list{display:flex;flex-direction:column;gap:4px}
+.ck-row{display:flex;align-items:flex-start;gap:5px}
+.ck-row input[type=checkbox]{margin-top:3px;cursor:pointer;flex-shrink:0;accent-color:#2563eb}
+.ck-span{
+  flex:1;outline:none;border:none;background:transparent;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  font-size:13.5px;line-height:1.55;color:#1e293b;min-width:0;
+}
+.ck-span.done{text-decoration:line-through;color:rgba(0,0,0,.35)}
+.ck-del{opacity:0;border:none;background:transparent;cursor:pointer;color:rgba(0,0,0,.4);font-size:14px;padding:0;line-height:1;transition:opacity .15s}
+.ck-row:hover .ck-del{opacity:1}
+.ck-add{
+  margin-top:2px;border:none;background:transparent;
+  color:rgba(0,0,0,.35);font-size:12px;cursor:pointer;text-align:left;padding:0;
+  transition:color .15s;font-family:'Segoe UI',Tahoma,sans-serif;
+}
+.ck-add:hover{color:rgba(0,0,0,.65)}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:2px}
+
+/* Find bar */
+.find-bar{
+  display:flex;align-items:center;gap:4px;padding:3px 7px;
+  border-bottom:1px solid rgba(0,0,0,.1);flex-shrink:0;
+}
+.find-bar.hidden{display:none}
+.find-input{
+  flex:1;height:20px;font-size:11.5px;padding:0 5px;
+  border:1px solid rgba(0,0,0,.18);border-radius:3px;
+  background:#fff;outline:none;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+}
+.find-input:focus{border-color:rgba(37,99,235,.5)}
+.find-count{font-size:10px;color:rgba(0,0,0,.4);white-space:nowrap;min-width:28px;text-align:center}
+.find-nav{
+  width:18px;height:18px;border:none;background:transparent;
+  cursor:pointer;font-size:11px;color:rgba(0,0,0,.5);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+}
+.find-nav:hover{background:rgba(0,0,0,.1)}
+mark.find-mark{background:rgba(253,211,77,.45);border-radius:2px;padding:0 1px;color:inherit}
+mark.find-mark.current{background:rgba(249,115,22,.7);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="note" id="note">
+  <div class="n-hd">
+    <button class="nbtn" id="btn-new" title="새 메모">＋</button>
+    <div class="n-drag" id="n-title"></div>
+    <div class="cp-wrap">
+      <button class="nbtn" id="btn-cp" title="색상">🎨</button>
+      <div class="cp-pal" id="cp-pal"></div>
+    </div>
+    <button class="nbtn" id="btn-opacity" title="불투명도 100%">●</button>
+    <button class="nbtn" id="btn-list" title="메모 목록">☰</button>
+    <button class="nbtn" id="btn-close" title="닫기">✕</button>
+  </div>
+  <div class="n-tbar">
+    <button class="fbt" data-cmd="bold"><b>B</b></button>
+    <button class="fbt" data-cmd="italic"><i>I</i></button>
+    <button class="fbt" data-cmd="underline"><u>U</u></button>
+    <button class="fbt" data-cmd="strikeThrough"><s>S</s></button>
+    <button class="fbt" data-cmd="insertUnorderedList" title="글머리기호">•</button>
+    <div class="tsep"></div>
+    <button class="mdbtn" id="btn-mode">✎ 텍스트</button>
+  </div>
+  <div id="find-bar" class="find-bar hidden">
+    <input type="text" id="find-input" class="find-input" placeholder="검색...">
+    <span id="find-count" class="find-count"></span>
+    <button class="find-nav" id="find-prev" title="이전 (Shift+Enter)">↑</button>
+    <button class="find-nav" id="find-next" title="다음 (Enter)">↓</button>
+    <button class="find-nav" id="find-close" title="닫기">✕</button>
+  </div>
+  <div class="n-body" id="n-body"></div>
+</div>
+
+<script>
+'use strict';
+
+const COLORS = ['yellow','pink','blue','green','purple','orange','red','white'];
+const CLR_HD = {yellow:'#fcd34d',pink:'#f472b6',blue:'#60a5fa',green:'#4ade80',purple:'#a78bfa',orange:'#fb923c',red:'#f87171',white:'#cbd5e1'};
+const OPACITY_STEPS = [1, 0.85, 0.7, 0.55];
+const OPACITY_ICONS = ['●', '◕', '◑', '◔'];
+
+const noteId = new URLSearchParams(window.location.search).get('id');
+let note = null;
+let opacityIdx = 0;
+
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);}}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const lazySave = debounce((changes) => window.noteAPI.update(noteId, changes), 500);
+
+function render() {
+  document.getElementById('note').dataset.color = note.color;
+  document.getElementById('n-title').textContent = note.title || '';
+  document.getElementById('btn-mode').textContent = note.mode==='checklist' ? '✓ 체크리스트' : '✎ 텍스트';
+  document.getElementById('btn-mode').classList.toggle('ck', note.mode==='checklist');
+  document.getElementById('cp-pal').innerHTML = COLORS.map(c =>
+    `<div class="cp-dot${note.color===c?' sel':''}" data-c="${c}" style="background:${CLR_HD[c]}"></div>`
+  ).join('');
+  renderBody();
+}
+
+function renderBody() {
+  const body = document.getElementById('n-body');
+  if (note.mode === 'checklist') {
+    const rows = (note.items||[]).map((it,i) => `
+      <div class="ck-row" data-i="${i}">
+        <input type="checkbox"${it.done?' checked':''}><span class="ck-span${it.done?' done':''}" contenteditable="true">${esc(it.text)}</span>
+        <button class="ck-del">×</button>
+      </div>`).join('');
+    body.innerHTML = `<div class="chk-list">${rows}<button class="ck-add">＋ 항목 추가</button></div>`;
+    wireChecklist(body.querySelector('.chk-list'));
+  } else {
+    body.innerHTML = `<div class="n-txt" contenteditable="true" data-ph="메모를 입력하세요...">${note.content||''}</div>`;
+    const txt = body.querySelector('.n-txt');
+    txt.addEventListener('input', () => { note.content=txt.innerHTML; lazySave({content:note.content}); });
+    txt.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+    });
+  }
+  body.classList.toggle('text-mode', note.mode !== 'checklist');
+}
+
+function wireChecklist(list) {
+  list.addEventListener('change', (e) => {
+    if (e.target.type!=='checkbox') return;
+    const i = +e.target.closest('.ck-row').dataset.i;
+    note.items[i].done = e.target.checked;
+    e.target.nextElementSibling.classList.toggle('done', e.target.checked);
+    lazySave({items:note.items});
+  });
+  list.addEventListener('input', (e) => {
+    const row = e.target.closest('.ck-row');
+    if (row && e.target.classList.contains('ck-span')) {
+      note.items[+row.dataset.i].text = e.target.textContent;
+      lazySave({items:note.items});
+    }
+  });
+  list.addEventListener('keydown', (e) => {
+    if (!e.target.classList.contains('ck-span')) return;
+    const i = +e.target.closest('.ck-row').dataset.i;
+    if (e.key==='Enter') {
+      e.preventDefault();
+      note.items.splice(i+1,0,{text:'',done:false});
+      window.noteAPI.update(noteId,{items:note.items}); renderBody();
+      setTimeout(()=>document.querySelectorAll('.ck-span')[i+1]?.focus(),20);
+    }
+    if (e.key==='Backspace' && !e.target.textContent && note.items.length>1) {
+      e.preventDefault();
+      note.items.splice(i,1);
+      window.noteAPI.update(noteId,{items:note.items}); renderBody();
+      setTimeout(()=>{const s=document.querySelectorAll('.ck-span');s?.[Math.max(0,i-1)]?.focus();},20);
+    }
+  });
+  list.addEventListener('click', (e) => {
+    if (e.target.classList.contains('ck-del')) {
+      note.items.splice(+e.target.closest('.ck-row').dataset.i,1);
+      window.noteAPI.update(noteId,{items:note.items}); renderBody();
+    }
+    if (e.target.classList.contains('ck-add')) {
+      note.items.push({text:'',done:false});
+      window.noteAPI.update(noteId,{items:note.items}); renderBody();
+      setTimeout(()=>{const s=document.querySelectorAll('.ck-span');s?.[s.length-1]?.focus();},20);
+    }
+  });
+}
+
+/* ── 버튼 ── */
+document.getElementById('btn-cp').onclick = (e) => {
+  document.getElementById('cp-pal').classList.toggle('open'); e.stopPropagation();
+};
+document.getElementById('cp-pal').addEventListener('click', (e) => {
+  const dot = e.target.closest('.cp-dot'); if (!dot) return;
+  note.color = dot.dataset.c;
+  window.noteAPI.update(noteId,{color:note.color});
+  document.getElementById('note').dataset.color = note.color;
+  document.getElementById('cp-pal').querySelectorAll('.cp-dot').forEach(d => d.classList.toggle('sel',d.dataset.c===note.color));
+  document.getElementById('cp-pal').classList.remove('open'); e.stopPropagation();
+});
+
+document.getElementById('btn-new').onclick  = () => window.noteAPI.addNote();
+document.getElementById('btn-list').onclick = () => window.noteAPI.openList();
+document.getElementById('btn-close').onclick = () => window.noteAPI.close();
+
+document.getElementById('btn-opacity').onclick = () => {
+  opacityIdx = (opacityIdx + 1) % OPACITY_STEPS.length;
+  const val = OPACITY_STEPS[opacityIdx];
+  document.getElementById('btn-opacity').textContent = OPACITY_ICONS[opacityIdx];
+  document.getElementById('btn-opacity').title = `불투명도 ${Math.round(val * 100)}%`;
+  window.noteAPI.setOpacity(noteId, val);
+};
+
+document.querySelector('.n-tbar').addEventListener('mousedown', (e) => {
+  const cmd = e.target.closest('[data-cmd]')?.dataset.cmd;
+  if (cmd) { e.preventDefault(); document.execCommand(cmd,false,null); return; }
+  if (e.target.id==='btn-mode') {
+    e.preventDefault();
+    note.mode = note.mode==='checklist' ? 'text' : 'checklist';
+    if (note.mode==='checklist' && !note.items?.length) note.items=[{text:'',done:false}];
+    window.noteAPI.update(noteId,{mode:note.mode,items:note.items});
+    document.getElementById('btn-mode').textContent = note.mode==='checklist' ? '✓ 체크리스트' : '✎ 텍스트';
+    document.getElementById('btn-mode').classList.toggle('ck',note.mode==='checklist');
+    renderBody();
+  }
+});
+
+document.addEventListener('click', () => document.getElementById('cp-pal')?.classList.remove('open'));
+
+document.getElementById('n-body').addEventListener('click', (e) => {
+  if (e.target !== document.getElementById('n-body')) return;
+  const txt = document.querySelector('.n-txt[contenteditable="true"]');
+  if (!txt) return;
+  txt.focus();
+  const sel = window.getSelection();
+  if (sel) { sel.selectAllChildren(txt); sel.collapseToEnd(); }
+});
+
+/* ── 텍스트 검색 ── */
+let _sq = '', _mc = 0, _mi = -1;
+
+function _noteText() {
+  if (note.mode === 'checklist')
+    return (note.items||[]).map(i => i.text).join('\n');
+  return (note.content||'')
+    .replace(/<li[^>]*>/gi,'\n').replace(/<\/li>/gi,'')
+    .replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>/gi,'\n').replace(/<\/p>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+}
+
+function _hlText(text, query, ci) {
+  if (!query) return esc(text);
+  const q = query.toLowerCase(), t = text.toLowerCase();
+  let out = '', pos = 0, mi = 0, i;
+  while ((i = t.indexOf(q, pos)) !== -1) {
+    out += esc(text.slice(pos, i));
+    out += `<mark class="find-mark${mi++ === ci ? ' current' : ''}">${esc(text.slice(i, i + query.length))}</mark>`;
+    pos = i + query.length;
+  }
+  return out + esc(text.slice(pos));
+}
+
+function _doFind(query, dir) {
+  const plain = _noteText();
+  const q = query.toLowerCase(), t = plain.toLowerCase();
+  let mc = 0, idx = 0;
+  while ((idx = t.indexOf(q, idx)) !== -1) { mc++; idx++; }
+  _mc = mc;
+
+  if (query !== _sq) { _sq = query; _mi = mc > 0 ? 0 : -1; }
+  else if (mc > 0) {
+    if (dir === 'next') _mi = (_mi + 1) % mc;
+    else if (dir === 'prev') _mi = (_mi - 1 + mc) % mc;
+  }
+
+  document.getElementById('n-body').innerHTML =
+    `<div class="n-txt">${_hlText(plain, query, _mi)}</div>`;
+  document.querySelector('.find-mark.current')?.scrollIntoView({ block: 'nearest' });
+
+  const cnt = document.getElementById('find-count');
+  if (!mc) { cnt.textContent = '없음'; cnt.style.color = 'rgba(220,38,38,.7)'; }
+  else { cnt.textContent = `${_mi + 1}/${mc}`; cnt.style.color = 'rgba(0,0,0,.4)'; }
+
+  document.getElementById('find-input').focus();
+}
+
+function openFindBar() {
+  document.getElementById('find-bar').classList.remove('hidden');
+  const inp = document.getElementById('find-input');
+  inp.focus(); inp.select();
+}
+function closeFindBar() {
+  document.getElementById('find-bar').classList.add('hidden');
+  document.getElementById('find-count').textContent = '';
+  _sq = ''; _mc = 0; _mi = -1;
+  renderBody();
+}
+
+document.getElementById('find-input').addEventListener('input', () => {
+  const q = document.getElementById('find-input').value;
+  if (q) _doFind(q);
+  else { _sq=''; _mc=0; _mi=-1; renderBody(); document.getElementById('find-count').textContent=''; }
+});
+document.getElementById('find-input').addEventListener('keydown', (e) => {
+  if (e.key==='Enter') { e.preventDefault(); const q=document.getElementById('find-input').value; if(q) _doFind(q, e.shiftKey?'prev':'next'); }
+  if (e.key==='Escape') { e.stopPropagation(); closeFindBar(); }
+});
+document.getElementById('find-prev').onclick  = () => { const q=document.getElementById('find-input').value; if(q) _doFind(q,'prev'); };
+document.getElementById('find-next').onclick  = () => { const q=document.getElementById('find-input').value; if(q) _doFind(q,'next'); };
+document.getElementById('find-close').onclick = closeFindBar;
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='f') {
+    e.preventDefault();
+    const fb = document.getElementById('find-bar');
+    if (fb.classList.contains('hidden')) openFindBar(); else closeFindBar();
+  }
+});
+
+/* ── 초기화 ── */
+window.noteAPI.getData(noteId).then(data => {
+  if (!data) return;
+  note = data;
+  // 저장된 불투명도 복원
+  const savedOpacity = note.opacity ?? 1;
+  opacityIdx = OPACITY_STEPS.findIndex(s => Math.abs(s - savedOpacity) < 0.01);
+  if (opacityIdx === -1) opacityIdx = 0;
+  document.getElementById('btn-opacity').textContent = OPACITY_ICONS[opacityIdx];
+  document.getElementById('btn-opacity').title = `불투명도 ${Math.round(OPACITY_STEPS[opacityIdx] * 100)}%`;
+  render();
+  setTimeout(() => document.querySelector('.n-txt,.ck-span')?.focus(), 50);
+});
+</script>
+</body>
+</html>
