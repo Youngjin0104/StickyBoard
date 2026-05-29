@@ -4,8 +4,10 @@ const path = require('path');
 const fs = require('fs');
 
 let tray, listWindow;
-const noteWindows = new Map();
-const shadeMap    = new Map();
+const noteWindows      = new Map();
+const shadeMap         = new Map(); // id → 접기 전 원래 높이
+const ignoreResizeSave = new Set();
+const dragSizeCache    = new Map(); // id → {w, h, timer} (드래그 중 사이즈 고정)
 
 /* ── 저장소 ── */
 function configPath()    { return path.join(app.getPath('userData'), 'config.json'); }
@@ -198,6 +200,35 @@ function notifyListWindow() {
 }
 
 /* ── 노트 창 ── */
+function snapHeaders(id, win) {
+  if (!win || win.isDestroyed()) return;
+  const [x, y] = win.getPosition();
+  const [w]    = win.getSize();
+  const HDRH   = 28;
+  let nx = x, ny = y;
+
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = false;
+    for (const [oid, owin] of noteWindows) {
+      if (oid === id || owin.isDestroyed() || !owin.isVisible()) continue;
+      const [ox, oy] = owin.getPosition();
+      const [ow]     = owin.getSize();
+      if (nx < ox + ow && nx + w > ox && ny < oy + HDRH && ny + HDRH > oy) {
+        const pR = ox + ow - nx, pL = nx + w - ox;
+        const pD = oy + HDRH - ny, pU = ny + HDRH - oy;
+        const min = Math.min(pR, pL, pD, pU);
+        if      (min === pR) nx = ox + ow;
+        else if (min === pL) nx = ox - w;
+        else if (min === pD) ny = oy + HDRH;
+        else                 ny = oy - HDRH;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  if (nx !== x || ny !== y) win.setPosition(Math.round(nx), Math.round(ny));
+}
+
 function toggleShadeState(id) {
   const next = !shadeMap.has(id);
   if (next) shadeMap.set(id, true); else shadeMap.delete(id);
@@ -240,9 +271,19 @@ function createNoteWindow(note) {
     }, 400);
   });
   win.on('resize', () => {
+    const cache = dragSizeCache.get(note.id);
+    if (cache) {
+      // 드래그 중 OS가 크기를 바꿨으면 즉시 원래대로 복원
+      const [cw, ch] = win.getSize();
+      if (cw !== cache.w || ch !== cache.h) win.setSize(cache.w, cache.h);
+      return;
+    }
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (!win.isDestroyed()) { const [w,h] = win.getSize(); patchNote(note.id, {w,h}); }
+      if (!win.isDestroyed() && !ignoreResizeSave.has(note.id)) {
+        const [w, h] = win.getSize();
+        patchNote(note.id, {w, h});
+      }
     }, 400);
   });
 
@@ -273,6 +314,56 @@ function openListWindow() {
 ipcMain.on('win-close',    (e) => BrowserWindow.fromWebContents(e.sender)?.close());
 ipcMain.on('win-minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize());
 ipcMain.on('open-list',    () => openListWindow());
+
+ipcMain.on('note-drag-start', (_, id) => {
+  const win = noteWindows.get(id);
+  if (!win || win.isDestroyed()) return;
+  const [w, h] = win.getSize();
+  dragSizeCache.set(id, { w, h });
+  ignoreResizeSave.add(id);
+});
+
+ipcMain.on('note-drag-end', (_, id) => {
+  setTimeout(() => {
+    dragSizeCache.delete(id);
+    ignoreResizeSave.delete(id);
+  }, 500);
+});
+
+ipcMain.on('note-move-by', (_, id, dx, dy) => {
+  const win = noteWindows.get(id);
+  if (!win || win.isDestroyed()) return;
+
+  const cache = dragSizeCache.get(id);
+  const w = cache?.w ?? win.getSize()[0];
+  const [x, y] = win.getPosition();
+  let nx = x + dx, ny = y + dy;
+
+  // 헤더(상단 28px)끼리만 충돌 감지
+  const HDRH = 28;
+  for (let pass = 0; pass < 3; pass++) {
+    let hit = false;
+    for (const [oid, owin] of noteWindows) {
+      if (oid === id || owin.isDestroyed() || !owin.isVisible()) continue;
+      const [ox, oy] = owin.getPosition();
+      const [ow]     = owin.getSize();
+      if (nx < ox + ow && nx + w > ox && ny < oy + HDRH && ny + HDRH > oy) {
+        const pR = ox + ow - nx, pL = nx + w - ox;
+        const pD = oy + HDRH - ny, pU = ny + HDRH - oy;
+        const min = Math.min(pR, pL, pD, pU);
+        if      (min === pR) nx = ox + ow;
+        else if (min === pL) nx = ox - w;
+        else if (min === pD) ny = oy + HDRH;
+        else                 ny = oy - HDRH;
+        hit = true;
+      }
+    }
+    if (!hit) break;
+  }
+
+  win.setPosition(Math.round(nx), Math.round(ny));
+});
+
 
 ipcMain.handle('note-get',    (_, id) => loadNotes().find(n => n.id === id) || null);
 ipcMain.handle('note-update', (_, id, changes) => {

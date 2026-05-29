@@ -59,10 +59,9 @@ html,body{width:100%;height:100%;background:transparent;overflow:hidden}
 .n-hd{
   height:28px;flex-shrink:0;
   display:flex;align-items:center;padding:0 4px;gap:1px;
-  cursor:grab;-webkit-app-region:drag;
+  cursor:grab;
 }
-.n-hd:active{cursor:grabbing}
-.n-hd button,.n-hd .cp-wrap{-webkit-app-region:no-drag}
+.n-hd.dragging{cursor:grabbing}
 
 /* Title placeholder in drag area */
 .n-drag{
@@ -452,6 +451,31 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/* ── 창 드래그 ── */
+(function() {
+  let drag = null;
+  const hd = document.querySelector('.n-hd');
+  hd.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target.closest('.nbtn,.cp-wrap')) return;
+    drag = { x: e.screenX, y: e.screenY };
+    hd.classList.add('dragging');
+    window.noteAPI.dragStart(noteId);
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!drag) return;
+    const dx = e.screenX - drag.x, dy = e.screenY - drag.y;
+    drag = { x: e.screenX, y: e.screenY };
+    if (dx || dy) window.noteAPI.moveWindowBy(noteId, dx, dy);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!drag) return;
+    drag = null;
+    hd.classList.remove('dragging');
+    window.noteAPI.dragEnd(noteId);
+  });
+})();
+
 /* ── 접기/펼치기 ── */
 let shaded = false;
 const _noteEl   = document.getElementById('note');
@@ -463,10 +487,17 @@ function applyShadeUI() {
   _btnShade.title = shaded ? '펼치기' : '접기';
 }
 
-_btnShade.onclick = async () => {
+async function doToggleShade() {
   shaded = await window.noteAPI.toggleShade(noteId);
   applyShadeUI();
-};
+}
+
+_btnShade.onclick = doToggleShade;
+
+document.querySelector('.n-hd').addEventListener('dblclick', (e) => {
+  if (e.target.closest('.nbtn, .cp-wrap')) return;
+  doToggleShade();
+});
 
 window.noteAPI.onShadeChanged((next) => { shaded = !!next; applyShadeUI(); });
 

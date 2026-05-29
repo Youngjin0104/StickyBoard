@@ -20,4 +20,6 @@ contextBridge.exposeInMainWorld('noteAPI', {
   setOpacity:     (id, val) => ipcRenderer.invoke('note-set-opacity', id, val),
   toggleShade:    (id) => ipcRenderer.invoke('note-toggle-shade', id),
   moveWindowBy:   (id, dx, dy) => ipcRenderer.send('note-move-by', id, dx, dy),
+  dragStart:      (id) => ipcRenderer.send('note-drag-start', id),
+  dragEnd:        (id) => ipcRenderer.send('note-drag-end', id),
 });
