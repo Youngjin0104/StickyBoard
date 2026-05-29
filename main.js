@@ -2,43 +2,10 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const zlib = require('zlib');
 
 let tray, listWindow;
 const noteWindows = new Map();
-
-/* ── 트레이 아이콘 ── */
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c;
-  }
-  return t;
-})();
-function crc32(buf) {
-  let c = 0xFFFFFFFF;
-  for (const b of buf) c = (c >>> 8) ^ CRC_TABLE[(c ^ b) & 0xFF];
-  return (c ^ 0xFFFFFFFF) >>> 0;
-}
-function pngChunk(type, data) {
-  const tb = Buffer.from(type, 'ascii');
-  const lb = Buffer.allocUnsafe(4); lb.writeUInt32BE(data.length);
-  const cb = Buffer.allocUnsafe(4); cb.writeUInt32BE(crc32(Buffer.concat([tb, data])));
-  return Buffer.concat([lb, tb, data, cb]);
-}
-function solidPNG(sz, r, g, b) {
-  const sig = Buffer.from([137,80,78,71,13,10,26,10]);
-  const hdr = Buffer.allocUnsafe(13);
-  hdr.writeUInt32BE(sz,0); hdr.writeUInt32BE(sz,4);
-  hdr[8]=8; hdr[9]=2; hdr[10]=0; hdr[11]=0; hdr[12]=0;
-  const row = Buffer.allocUnsafe(1 + sz*3);
-  row[0] = 0;
-  for (let x=0; x<sz; x++) { row[1+x*3]=r; row[1+x*3+1]=g; row[1+x*3+2]=b; }
-  const raw = Buffer.concat(Array.from({length:sz}, () => row));
-  return Buffer.concat([sig, pngChunk('IHDR',hdr), pngChunk('IDAT',zlib.deflateSync(raw)), pngChunk('IEND',Buffer.alloc(0))]);
-}
+const shadeMap    = new Map();
 
 /* ── 저장소 ── */
 function configPath()    { return path.join(app.getPath('userData'), 'config.json'); }
@@ -231,13 +198,21 @@ function notifyListWindow() {
 }
 
 /* ── 노트 창 ── */
+function toggleShadeState(id) {
+  const next = !shadeMap.has(id);
+  if (next) shadeMap.set(id, true); else shadeMap.delete(id);
+  const win = noteWindows.get(id);
+  if (win && !win.isDestroyed()) win.webContents.send('note-shade-changed', next);
+  return next;
+}
+
 function createNoteWindow(note) {
   const win = new BrowserWindow({
     x: note.x ?? 100, y: note.y ?? 100,
     width: note.w ?? 240, height: note.h ?? 240,
     minWidth: 180, minHeight: 160,
     frame: false, transparent: true, backgroundColor: '#00000000',
-    skipTaskbar: true,
+    skipTaskbar: true, icon: path.join(__dirname, 'noteit.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false,
@@ -281,7 +256,7 @@ function openListWindow() {
   if (listWindow && !listWindow.isDestroyed()) { listWindow.show(); listWindow.focus(); return; }
   listWindow = new BrowserWindow({
     width: 290, height: 480,
-    frame: false, resizable: false,
+    frame: false, resizable: false, icon: path.join(__dirname, 'noteit.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false,
@@ -300,7 +275,15 @@ ipcMain.on('win-minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minim
 ipcMain.on('open-list',    () => openListWindow());
 
 ipcMain.handle('note-get',    (_, id) => loadNotes().find(n => n.id === id) || null);
-ipcMain.handle('note-update', (_, id, changes) => { patchNote(id, changes); notifyListWindow(); });
+ipcMain.handle('note-update', (_, id, changes) => {
+  patchNote(id, changes);
+  notifyListWindow();
+  if ('title' in changes) {
+    const win = noteWindows.get(id);
+    if (win && !win.isDestroyed()) win.webContents.send('note-title-updated', changes.title);
+  }
+});
+ipcMain.handle('note-toggle-shade', (_, id) => toggleShadeState(id));
 ipcMain.handle('note-delete', (_, id) => {
   const meta  = loadMeta();
   const entry = meta.find(m => m.id === id);
@@ -410,7 +393,7 @@ app.whenReady().then(() => {
 });
 
 function createTray() {
-  const icon = nativeImage.createFromBuffer(solidPNG(16, 252, 211, 77));
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'noteit.png')).resize({ width: 16, height: 16, quality: 'best' });
   tray = new Tray(icon);
   tray.setToolTip('StickyBoard');
   tray.setContextMenu(Menu.buildFromTemplate([

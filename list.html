@@ -73,6 +73,20 @@ body{
   font-family:'Segoe UI',Tahoma,sans-serif;
   background:var(--bg);color:var(--text);
   height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  position:relative;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:url(noteit.png) no-repeat center 60%/75%;
+  opacity:0.22;pointer-events:none;z-index:0;
+  mix-blend-mode:screen;
+}
+html.light body::before{
+  mix-blend-mode:multiply;
+  opacity:0.18;
+}
+#titlebar,#actions,#search-wrap,#count,#list,#path-section,.modal-overlay{
+  position:relative;z-index:1;
 }
 
 /* Title bar */

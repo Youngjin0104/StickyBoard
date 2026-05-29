@@ -11,7 +11,8 @@
   "devDependencies": {
     "app-builder-bin": "^5.0.0-alpha.13",
     "electron": "^42.2.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "playwright-core": "^1.60.0"
   },
   "build": {
     "appId": "com.internal.stickyboard",

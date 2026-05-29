@@ -115,8 +115,19 @@ html,body{width:100%;height:100%;background:transparent;overflow:hidden}
 .mdbtn:hover{background:rgba(0,0,0,.18)}
 .mdbtn.ck{background:#2563eb;color:#fff}
 
-/* Body */
-.n-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 10px}
+/* Body watermark */
+.n-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 10px;position:relative}
+.n-body::before{
+  content:'';position:absolute;inset:0;
+  background:url(noteit.png) no-repeat center/55%;
+  opacity:0.12;pointer-events:none;z-index:0;mix-blend-mode:multiply;
+}
+.n-body > *{position:relative;z-index:1}
+
+/* Shade */
+.note.is-shaded .n-tbar,
+.note.is-shaded .find-bar,
+.note.is-shaded .n-body{display:none}
 .n-body.text-mode{cursor:text}
 .n-txt{
   width:100%;min-height:50px;outline:none;border:none;background:transparent;
@@ -181,6 +192,7 @@ mark.find-mark.current{background:rgba(249,115,22,.7);color:#fff}
   <div class="n-hd">
     <button class="nbtn" id="btn-new" title="새 메모">＋</button>
     <div class="n-drag" id="n-title"></div>
+    <button class="nbtn" id="btn-shade" title="접기">▲</button>
     <div class="cp-wrap">
       <button class="nbtn" id="btn-cp" title="색상">🎨</button>
       <div class="cp-pal" id="cp-pal"></div>
@@ -439,6 +451,24 @@ document.addEventListener('keydown', (e) => {
     if (fb.classList.contains('hidden')) openFindBar(); else closeFindBar();
   }
 });
+
+/* ── 접기/펼치기 ── */
+let shaded = false;
+const _noteEl   = document.getElementById('note');
+const _btnShade = document.getElementById('btn-shade');
+
+function applyShadeUI() {
+  _noteEl.classList.toggle('is-shaded', shaded);
+  _btnShade.textContent = shaded ? '▼' : '▲';
+  _btnShade.title = shaded ? '펼치기' : '접기';
+}
+
+_btnShade.onclick = async () => {
+  shaded = await window.noteAPI.toggleShade(noteId);
+  applyShadeUI();
+};
+
+window.noteAPI.onShadeChanged((next) => { shaded = !!next; applyShadeUI(); });
 
 /* ── 초기화 ── */
 window.noteAPI.getData(noteId).then(data => {
